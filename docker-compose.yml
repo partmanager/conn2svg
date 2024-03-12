@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  conn2svg_backend:
+    container_name: conn2svg_backend
+    image: conn2svg_backend/python:3.12-slim-bookworm
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    deploy:
+        restart_policy:
+            condition: on-failure
+    tty: true
+    volumes:
+      - ./:/mnt/conn2svg_backend
