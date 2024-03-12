@@ -1,5 +1,5 @@
 conn2svg Python library
-=====================
+=======================
 
 .. start-intro
 
