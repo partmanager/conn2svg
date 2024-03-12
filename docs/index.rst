@@ -1,5 +1,5 @@
 Welcome to conn2svg's documentation!
-==================================
+====================================
 
 .. include:: ../README.rst
    :start-after: start-intro
