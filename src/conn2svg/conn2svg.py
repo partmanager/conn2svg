@@ -106,20 +106,20 @@ class Pin:
 
 
 class PinPattern:
-    MATRIX = {'header': {'tb': [[], '1col'],
-                         'bt': [['reverse'], '1col'],
-                         'tb-lr': [[], '2col'],
-                         'tb-rl': [['flip_half'], '2col'],
-                         'bt-rl': [['reverse'], '2col'],
-                         'bt-lr': [['reverse', 'flip_half'], '2col'],
-                         'lr-tb': [['odd_even'], '2col'],
-                         'lr-bt': [['odd_even', 'flip_half', 'reverse'], '2col'],
-                         'rl-tb': [['odd_even', 'flip_half'], '2col'],
-                         'rl-bt': [['odd_even', 'reverse'], '2col']},
-              'dsub': {'tb-lr': [[], '1left'],
-                       'bt-rl': [['reverse'], '1right'],
-                       'bt-lr': [['reverse', 'flip_half'], '1left'],
-                       'tb-rl': [['flip_half', 'shift_left'], '1right']}}
+    MATRIX = {'header': {'tb': [[], 'header_dsub'],
+                         'bt': [['reverse'], 'header_dsub'],
+                         'tb-lr': [[], 'header_dsub'],
+                         'tb-rl': [['flip_half'], 'header_dsub'],
+                         'bt-rl': [['reverse'], 'header_dsub'],
+                         'bt-lr': [['reverse', 'flip_half'], 'header_dsub'],
+                         'lr-tb': [['odd_even'], 'header_dsub'],
+                         'lr-bt': [['odd_even', 'flip_half', 'reverse'], 'header_dsub'],
+                         'rl-tb': [['odd_even', 'flip_half'], 'header_dsub'],
+                         'rl-bt': [['odd_even', 'reverse'], 'header_dsub']},
+              'dsub': {'tb-lr': [[], 'header_dsub'],
+                       'bt-rl': [['reverse'], 'header_dsub'],
+                       'bt-lr': [['reverse', 'flip_dsub'], 'header_dsub'],
+                       'tb-rl': [['flip_dsub'], 'header_dsub']}}
 
     def __init__(self,
                  pin_count: int,
@@ -152,14 +152,15 @@ class PinPattern:
                         self._pins = self._pins[half::] + self._pins[:half:]
                     elif transform == 'odd_even':
                         self._pins = self._pins[::2] + self._pins[1::2]
-                    elif transform == 'shift_left':
-                        self._pins = self._pins + [self._pins.pop(0)]
+                    elif transform == 'flip_dsub':
+                        half = round(len(self._pins)/2 + 0.1)
+                        if '-lr' in mode:
+                            half = round(len(self._pins)/2 - 0.1)
+                        self._pins = self._pins[half::] + self._pins[:half:]
                     else:
                         raise ValueError('Unknown pin pattern transformation:', transform)
-                if modes[mode][1] == '1col':
-                    self._generate_1col(pin_count)
-                elif modes[mode][1] == '2col':
-                    self._generate_2col(pin_count, shld)
+                if modes[mode][1] == 'header_dsub':
+                    self._generate_header_dsub(pin_count, type, mode, shld)
             else:
                 raise ValueError('Unknown pin pattern mode:', mode)
         else:
@@ -177,28 +178,34 @@ class PinPattern:
                 self._pins.append(Pin(designator=PinText(str(number)),
                                       net=PinText()))
 
-    def _generate_1col(self, pin_count: int):
-        for i in range(0, pin_count, 1):
-            self._pins[i].y = i * DEFAULT_PIN_HEIGHT
-
-    def _generate_2col(self, pin_count: int, shld: str):
-        x = -1 * DEFAULT_PIN_WIDTH
+    def _generate_header_dsub(self, pin_count: int, type: str, mode: str, shld: str) -> None:
+        x = -DEFAULT_PIN_WIDTH
         y = 0
+        if type == 'dsub' and '-rl' in mode:
+            y = DEFAULT_PIN_HEIGHT / 2
         half = False
         for i in range(0, pin_count, 1):
             self._pins[i].x = x
             self._pins[i].y = y
             y += DEFAULT_PIN_HEIGHT
-            if not half and i + 1 >= pin_count / 2:
-                y = 0
-                x = 0
-                half = True
+            if mode != 'tb' and mode != 'bt':
+                i_offset = 1
+                y_offset = 0
+                if type == 'dsub':
+                    if '-rl' in mode:
+                        i_offset = 2
+                    else:
+                        y_offset = DEFAULT_PIN_HEIGHT / 2
+                if not half and i + i_offset >= pin_count / 2:
+                    y = y_offset
+                    x = 0
+                    half = True
         if shld != None and len(shld):
             self._pins.append(Pin(designator=PinText(shld),
-                                  net=PinText(),
-                                  x = - DEFAULT_PIN_WIDTH,
-                                  y = y,
-                                  pin_width=DEFAULT_PIN_WIDTH*2))
+                                    net=PinText(),
+                                    x = -DEFAULT_PIN_WIDTH,
+                                    y = y,
+                                    pin_width=DEFAULT_PIN_WIDTH*2))
 
 
 class PinoutDrawing:
@@ -210,7 +217,6 @@ class PinoutDrawing:
                  prefixes: list = None,
                  shield_designator: str = None) -> None:
         self._colors = colors
-        self.drawing = svg.Drawing(DEFAULT_PIN_WIDTH, DEFAULT_PIN_HEIGHT)
         self.pins = PinPattern(pin_count, type, mode, prefixes, shield_designator).to_dict()
 
     def update_color(self, pin: str, color: str) -> None:
@@ -229,12 +235,8 @@ class PinoutDrawing:
                         value.color = color
             self.pins.update({pin: value})
 
-    def _update_drawing_area(self, minus_x: float, plus_x: float, y: float):
-        self.drawing.width = abs(minus_x) + abs(plus_x) + 2
-        self.drawing.height = y + 2
-        self.drawing.view_box = (minus_x - 1, -1, self.drawing.width, self.drawing.height)
-
-    def to_svg(self, path) -> None:
+    def svg_drawing(self):
+        drawing = svg.Drawing(DEFAULT_PIN_WIDTH, DEFAULT_PIN_HEIGHT)
         plus_x = 0
         minus_x = 0
         y = 0
@@ -242,6 +244,11 @@ class PinoutDrawing:
             minus_x, plus_x = (min([minus_x, pin.width]), max([plus_x, pin.width]))
             y = max([y, pin.y])
             for element in pin.svg_elements():
-                self.drawing.append(element)
-        self._update_drawing_area(minus_x, plus_x, y + DEFAULT_PIN_HEIGHT)
-        self.drawing.save_svg(path)
+                drawing.append(element)
+        drawing.width = abs(minus_x) + abs(plus_x) + 2
+        drawing.height = y + DEFAULT_PIN_HEIGHT + 2
+        drawing.view_box = (minus_x - 1, -1, drawing.width, drawing.height)
+        return drawing
+
+    def to_svg(self, path) -> None:
+        self.svg_drawing().save_svg(path)
