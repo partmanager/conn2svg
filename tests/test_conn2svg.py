@@ -95,7 +95,7 @@ class TestPinPattern(unittest.TestCase):
         # self._template(15, 'dsub', 'tb-rl')
 
     def test_shield(self):
-        drawing = PinoutDrawing(12, 'header', 'tb-lr', shield_pin='shld')
+        drawing = PinoutDrawing(12, 'header', 'tb-lr', shield_designator='shld')
         for i in range(1, 13, 1):
             drawing.update_net(str(i), 'net' + str(i))
             drawing.update_color(str(i), '#' + hex(round(1118481 * i)).replace('0x', ''))
