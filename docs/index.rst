@@ -8,4 +8,4 @@ Welcome to conn2svg's documentation!
 Repository
 ==========
 
-Code is maintained on GitHub: `github.com/partmanager/netbom <https://github.com/partmanager/conn2svg>`_.
+Code is maintained on GitHub: `github.com/partmanager/conn2svg <https://github.com/partmanager/conn2svg>`_.

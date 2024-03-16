@@ -1,45 +1,108 @@
 import unittest
-from netbom.netlist_readers import RinfNetlistReader
-from conn2svg import PinoutDrawing
-import os
+from conn2svg import PinPattern, PinoutDrawing
 
-DIR =  os.path.join(os.path.dirname(os.path.abspath(__file__)), "examples/netlist/")
 
-MAP = {'J_HEADER_1x2_2.54_VERTICAL': {'pincount': 2, 'rows': 1, 'type': None, 'mode': 'tb'}}
-COLORS = [{'#2f75b5': 'gnd'},
-          {'#dedbee': ['3.3v']}]
-OVERRIDE = {'NetxD': '+3.3V'}
-bom, netlist = RinfNetlistReader().bom_and_netlist_from_file(DIR + 'Altium_LED-Resistor.FRP')
+class TestPinPattern(unittest.TestCase):
+    def test__generate_pins(self):
+        pattern = PinPattern(8, 'header', 'tb-lr')
+        self.assertEqual(pattern.designators(), ['1', '2', '3', '4', '5', '6', '7', '8'])
 
-def is_net_orphaned(net):
-    return len(netlist[net].connections) == 1 and len(netlist[net].connections.to_dict().values()) == 1
+        pattern = PinPattern(8, 'header', 'tb-lr', ['A'])
+        self.assertEqual(pattern.designators(), ['A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8'])
 
-class TestConn2svg(unittest.TestCase):
-    def test_generate_svg(self):
-        parts = netlist.filter_designator('J')
+        pattern = PinPattern(8, 'header', 'tb-lr', ['A', 'B'])
+        self.assertEqual(pattern.designators(), ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4'])
 
-        for part in parts:
-            part_number = bom.rows.fetch_row_by_designator(part.designator)['Part Number']
-            if part_number in MAP:
-                params = MAP[part_number]
-                shield_pin = None
-                if 'shield_pin' in params:
-                    shield_pin = params['shield_pin']
-                drawing = PinoutDrawing(params['pincount'],
-                                                params['rows'],
-                                                params['type'],
-                                                params['mode'],
-                                                colors=COLORS,
-                                                shield_pin=shield_pin)
-                
-                for pin, net in part.to_dict()[part.designator].items():
-                    if not is_net_orphaned(net):
-                        if net in OVERRIDE:
-                            drawing.update_net(pin, OVERRIDE[net])
-                        else:
-                            drawing.update_net(pin, net)
+    def test_header_type(self):
+        pattern = PinPattern(8, 'header', 'tb')
+        self.assertEqual(pattern.designators(), ['1', '2', '3', '4', '5', '6', '7', '8'])
 
-                drawing.to_svg(part.designator + '.svg')
+        pattern = PinPattern(8, 'header', 'bt')
+        self.assertEqual(pattern.designators(), ['8', '7', '6', '5', '4', '3', '2', '1'])
+
+        pattern = PinPattern(8, 'header', 'tb-lr')
+        self.assertEqual(pattern.designators(), ['1', '2', '3', '4', '5', '6', '7', '8'])
+
+        pattern = PinPattern(8, 'header', 'tb-rl')
+        self.assertEqual(pattern.designators(), ['5', '6', '7', '8', '1', '2', '3', '4'])
+
+        pattern = PinPattern(8, 'header', 'bt-rl')
+        self.assertEqual(pattern.designators(), ['8', '7', '6', '5', '4', '3', '2', '1'])
+
+        pattern = PinPattern(8, 'header', 'bt-lr')
+        self.assertEqual(pattern.designators(), ['4', '3', '2', '1', '8', '7', '6', '5'])
+
+        pattern = PinPattern(8, 'header', 'lr-tb')
+        self.assertEqual(pattern.designators(), ['1', '3', '5', '7', '2', '4', '6', '8'])
+
+        pattern = PinPattern(8, 'header', 'lr-bt')
+        self.assertEqual(pattern.designators(), ['7', '5', '3', '1', '8', '6', '4', '2'])
+
+        pattern = PinPattern(8, 'header', 'rl-tb')
+        self.assertEqual(pattern.designators(), ['2', '4', '6', '8', '1', '3', '5', '7'])
+
+        pattern = PinPattern(8, 'header', 'rl-bt')
+        self.assertEqual(pattern.designators(), ['8', '6', '4', '2', '7', '5', '3', '1'])
+
+    def test_header_type_prefixes(self):
+        pattern = PinPattern(8, 'header', 'tb-lr', ['A', 'B'])
+        self.assertEqual(pattern.designators(), ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4'])
+
+        pattern = PinPattern(8, 'header', 'tb-rl', ['A', 'B'])
+        self.assertEqual(pattern.designators(), ['B1', 'B2', 'B3', 'B4', 'A1', 'A2', 'A3', 'A4'])
+
+        pattern = PinPattern(8, 'header', 'bt-rl', ['A', 'B'])
+        self.assertEqual(pattern.designators(), ['B4', 'B3', 'B2', 'B1', 'A4', 'A3', 'A2', 'A1'])
+
+        pattern = PinPattern(8, 'header', 'bt-lr', ['A', 'B'])
+        self.assertEqual(pattern.designators(), ['A4', 'A3', 'A2', 'A1', 'B4', 'B3', 'B2', 'B1'])
+
+    def test_dsub_type(self):
+        pattern = PinPattern(9, 'dsub', 'tb-lr')
+        self.assertEqual(pattern.designators(), ['1', '2', '3', '4', '5', '6', '7', '8', '9'])
+
+        pattern = PinPattern(9, 'dsub', 'bt-rl')
+        self.assertEqual(pattern.designators(), ['9', '8', '7', '6', '5', '4', '3', '2', '1'])
+
+        pattern = PinPattern(9, 'dsub', 'bt-lr')
+        self.assertEqual(pattern.designators(), ['5', '4', '3', '2', '1', '9', '8', '7', '6', ])
+
+        pattern = PinPattern(9, 'dsub', 'tb-rl')
+        self.assertEqual(pattern.designators(), ['6', '7', '8', '9', '1', '2', '3', '4', '5'])
+
+    def _template(self, pin_count, type, mode):
+        drawing = PinoutDrawing(pin_count, type, mode)
+        for i in range(1, pin_count + 1, 1):
+            drawing.update_net(str(i), 'net' + str(i))
+            drawing.update_color(str(i), '#' + hex(round(1118481 * i)).replace('0x', ''))
+        drawing.to_svg(type + '_' + str(pin_count)+'pin_'+ mode + '.svg')
+
+    def test_save_svg(self):
+        self._template(12, 'header', 'tb')
+        self._template(12, 'header', 'bt')
+        self._template(12, 'header', 'tb-lr')
+        self._template(12, 'header', 'tb-rl')
+        self._template(12, 'header', 'bt-rl')
+        self._template(12, 'header', 'bt-lr')
+        self._template(12, 'header', 'lr-tb')
+        self._template(12, 'header', 'lr-bt')
+        self._template(12, 'header', 'rl-tb')
+        self._template(12, 'header', 'rl-bt')
+        
+        # self._template(15, 'dsub', 'tb-lr')
+        # self._template(15, 'dsub', 'bt-rl')
+        # self._template(15, 'dsub', 'bt-lr')
+        # self._template(15, 'dsub', 'tb-rl')
+
+    def test_shield(self):
+        drawing = PinoutDrawing(12, 'header', 'tb-lr', shield_pin='shld')
+        for i in range(1, 13, 1):
+            drawing.update_net(str(i), 'net' + str(i))
+            drawing.update_color(str(i), '#' + hex(round(1118481 * i)).replace('0x', ''))
+        drawing.update_net('shld', 'netSHLD')
+        drawing.update_color('shld', '#0000cc')
+        drawing.to_svg('header_12pin_tb-lr_shield.svg')
+
 
 if __name__ == '__main__':
     unittest.main()

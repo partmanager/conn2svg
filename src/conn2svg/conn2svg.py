@@ -1,267 +1,102 @@
-# [TODO] to refactor entire module
-
 import drawsvg as svg
 from ._tooling import FontTooling
 
-DEFAULT_COLORS = [{'#2f75b5': 'gnd'}]
-DEFAULT_COLOR = '#eeeeee'
+DEFAULT_COLORS = {'#2f75b5': ['gnd']}
+DEFAULT_BG_COLOR = '#eeeeee'
 DEFAULT_PIN_WIDTH = 20
 DEFAULT_PIN_HEIGHT = 20
+DEFAULT_FONT_SIZE = DEFAULT_PIN_HEIGHT * 0.5
 DEFAULT_FONT_FAMILY = 'Arial'
 
-class Params:
+
+class PinText:
     def __init__(self,
-                 x: int = None,
-                 y: int = None,
-                 color: str = DEFAULT_COLOR,
-                 net: str = '',
-                 net_anchor: str = 'start') -> None:
+                 text: str = '',
+                 x: float = 0,
+                 y: float = 0,
+                 color: str = '#000000',
+                 anchor: str = 'start') -> None:
+        self.text = text
         self.x = x
         self.y = y
         self.color = color
-        self.net = net
-        self.net_anchor = net_anchor
+        self.anchor = anchor
 
-    def to_dict(self):
-        return {'x': self.x,
-                'y': self.y,
-                'color': self.color,
-                'net': self.net,
-                'net_anchor': self.net_anchor}
+    def svg_elements(self) -> list:
+        return [self._overline(svg.Text(text = '',
+                                        font_size = str(DEFAULT_FONT_SIZE) + 'px',
+                                        x = round(self.x, 2),
+                                        y = round(self.y, 2),
+                                        font_family = DEFAULT_FONT_FAMILY,
+                                        text_anchor = self.anchor,
+                                        fill = self.color))]
 
-    def __str__(self) -> str:
-        return str(self.to_dict())
+    def width(self) -> float:
+        return FontTooling.calculate_text_width(self.text.replace('\\', ''),
+                                                DEFAULT_FONT_SIZE,
+                                                DEFAULT_FONT_FAMILY)
 
-
-class ColRow:
-    def __init__(self, column: int, row: int) -> None:
-        self._column = column
-        self._row = row
-
-    @property
-    def column(self) -> int:
-        return self._column
-
-    @property
-    def row(self) -> int:
-        return self._row
-    
-    def __str__(self) -> str:
-        return str([self._column, self._row])
-
-
-class Pinmap:
-    def __init__(self, pincount: int,
-                 rows: int,
-                 type: str,
-                 mode: str,
-                 prefixes: list = None,
-                 shield_pin: str = None) -> None:
-        self._items = {}
-        self._pin_pattern(pincount, rows, type, prefixes, mode)
-        if rows == 1:
-            self._xy_net_anchor_pattern_1(pincount)
-        elif rows%2 == 0:
-            self._xy_net_anchor_pattern_2(pincount, shield_pin, prefixes)
-
-    def to_dict(self) -> dict:
-        return self._items
-
-    def _pin_pattern(self, pincount: int, rows: int, type: str, prefixes: list, mode: str):
-        # [TODO] to refactor probably extract it to another class
-        pinlist = []
-        pinlist = list(range(1, pincount + 1 , 1))
-        if type == 'z' and rows == 2:
-            if mode == 'lr-tb' or mode == 'rl-bt':
-                if mode == 'rl-bt':
-                    pinlist.reverse()
-            elif mode == 'rl-tb' or mode == 'lr-bt':
-                pinnumber = 0
-                while pinnumber < pincount:
-                    even = pinlist[pinnumber]
-                    pinlist[pinnumber] = pinlist[pinnumber + 1]
-                    pinlist[pinnumber + 1] = even
-                    pinnumber += 2
-                if mode == 'lr-bt':
-                    pinlist.reverse()
-            else:
-                raise ValueError("Unknown Pinmap mode: " + str(mode))
-        elif type == None and rows == 1:
-            if mode == 'tb':
-                pass
-            elif mode == 'bt':
-                pinlist.reverse()
-            else:
-                raise ValueError("Unknown Pinmap mode: " + str(mode))
-        elif len(prefixes) and type == 'z':
-            old_pinlist = pinlist
-            pinlist = []
-            for pin_number in old_pinlist:
-                for prefix in prefixes:
-                    pinlist.append(str(prefix) + str(pin_number))
-            if mode == 'tb-lr':
-                pass
-            elif mode == 'tb-rl':
-                pinnumber = 0
-                while pinnumber < pincount:
-                    even = pinlist[pinnumber]
-                    pinlist[pinnumber] = pinlist[pinnumber + 1]
-                    pinlist[pinnumber + 1] = even
-                    pinnumber += 2
-            else:
-                raise ValueError("Unknown Pinmap mode: " + str(mode))
-        else:
-            raise ValueError("Unknown Pinmap type: " + str(type))
-
-        for pinnumber in pinlist:
-            self._items.update({(str(pinnumber)): Params()})
-
-    def _xy_net_anchor_pattern_1(self, pincount: int):
-        # [TODO] to refactor probably extract it to another class
-        col_row = []
-        for pinnumber in range(1, pincount + 1 , 1):
-            col_row.append(ColRow(0, pinnumber-1))
-        
-        i = 0
-        # max_y = 0
-        for pin, params in self._items.items():
-            params.x = col_row[i].column * DEFAULT_PIN_WIDTH
-            params.y = col_row[i].row * DEFAULT_PIN_HEIGHT
-            params.net_anchor = 'start'
-            self._items.update({pin: params})
-            i += 1
-
-    def _xy_net_anchor_pattern_2(self, pincount: int, shield_pin: str, prefixes: list):
-        # [TODO] to refactor probably extract it to another class
-        col_row = []
-        column = -1
-        row = 0
-        prefixcount = 1
-        if len(prefixes):
-            prefixcount = len(prefixes)
-        for pinnumber in range(1, prefixcount * pincount + 1 , 1):
-            col_row.append(ColRow(column, row))
-            if (pinnumber - 1) % 2:
-                row += 1
-            if column == 0:
-                column = -1
-            else:
-                column = 0
-
-        i = 0
-        max_y = 0
-        for pin, params in self._items.items():
-            params.x = col_row[i].column * DEFAULT_PIN_WIDTH
-            params.y = col_row[i].row * DEFAULT_PIN_HEIGHT
-            max_y = max([max_y, params.y])
-            if i % 2:
-                params.net_anchor = 'start'
-            else:
-                params.net_anchor = 'end'
-            self._items.update({pin: params})
-            i += 1
-        
-        column = -1
-        if not shield_pin == None and len(shield_pin):
-            params = Params(x = column * DEFAULT_PIN_WIDTH,
-                            y = max_y + DEFAULT_PIN_HEIGHT,
-                            net_anchor = 'start')
-            self._items.update({shield_pin: params})
-
-    def __str__(self) -> str:
-        return str([{pin: str(params)} for pin, params in self._items.items()])
-
-
-class PinoutDrawing:
-    def __init__(self,
-                 pincount,
-                 rows,
-                 type,
-                 mode,
-                 prefixes: list = None,
-                 colors=DEFAULT_COLORS,
-                 shield_pin: str = None) -> None:
-        self._shield_pin = shield_pin
-        self._pin_width = DEFAULT_PIN_WIDTH
-        self._pin_height = DEFAULT_PIN_HEIGHT
-        self._drawing = svg.Drawing(self._pin_width, self._pin_height)
-        self._colors = colors
-        self.pinmap = Pinmap(pincount, rows, type, mode, prefixes, shield_pin)
-        self._origin_plus_x = 0
-        self._origin_minus_x = 0
-
-    def draw_pin(self, x: float, y: float, bg_color: str, name: str, net: str, net_anchor: str):
-        offset = 0
-        flip = 1
-        if net_anchor == 'start':
-            offset = self._pin_width
-        elif net_anchor == 'end':
-            flip = -1
-
-        font_size = self._pin_height * 0.50
-
-        text_color = 'white'
-        if self._is_color_bright(bg_color):
-            text_color = 'black'
-
-        net_x = x + flip * (self._pin_width / 4) + offset
-        name_x = x + self._pin_width / 2
-        pin_width = self._pin_width
-        if name == self._shield_pin:
-            pin_width *= 2
-            name_x = 0
-            net_x += self._pin_width
-        self._drawing.append(svg.Rectangle(x=x,
-                                           y=y,
-                                           width=pin_width,
-                                           height=self._pin_height,
-                                           stroke='black',
-                                           fill=bg_color))
-        self._drawing.append(svg.Text(text = name,
-                                      font_size = str(font_size) + 'px',
-                                      x = name_x,
-                                      y = y + self._pin_height / 2 + self._pin_height * 0.15,
-                                      font_family = DEFAULT_FONT_FAMILY,
-                                      text_anchor = 'middle',
-                                      fill = text_color))
-
-        net_text = svg.Text(text='',
-                            font_size = str(font_size) + 'px',
-                            x = net_x,
-                            y = y + self._pin_height / 2 + self._pin_height * 0.15,
-                            font_family = DEFAULT_FONT_FAMILY,
-                            text_anchor = net_anchor)
-        self._drawing.append(self._text_overline(net_text, net))
-
-        text_width = FontTooling.calculate_text_width(net.replace('\\', ''),
-                                                      font_size,
-                                                      DEFAULT_FONT_FAMILY)
-        
-        self._update_drawing_area(net_x + flip * text_width, y + self._pin_height)
-
-    def _update_drawing_area(self, envelope_x: float, envelope_y: float):
-        self._origin_plus_x = max([self._origin_plus_x, envelope_x])
-        self._origin_minus_x = min([self._origin_minus_x, envelope_x])
-
-        self._drawing.width = abs(self._origin_minus_x) + abs(self._origin_plus_x) + 2
-        self._drawing.height = max([self._drawing.height, envelope_y]) + 2
-        self._drawing.view_box = (self._origin_minus_x - 1, -1,
-                                  self._drawing.width,
-                                  self._drawing.height)
-
-    def _text_overline(self, text_element: svg.Text, net: str) -> svg.Text:
-        # [TODO] to improve overlining algorithm: currently it overlines each letter separately
-        for i in range(0, len(net), 1):
-            current = net[i]
+    def _overline(self, svg_text: svg.Text) -> svg.Text:
+        for i in range(0, len(self.text), 1):
+            current = self.text[i]
             next = None
-            if i < len(net) - 1:
-                next = net[i + 1]
+            if i < len(self.text) - 1:
+                next = self.text[i + 1]
 
             if next == '\\':
-                text_element.append(svg.TSpan(text=current, text_decoration='overline'))
+                svg_text.append(svg.TSpan(text=current, text_decoration='overline'))
             elif not current == '\\':
-                text_element.append(svg.TSpan(text=current))
-        return text_element
+                svg_text.append(svg.TSpan(text=current))
+        return svg_text
+
+
+class Pin:
+    def __init__(self,
+                 designator: PinText,
+                 net: PinText,
+                 x: float = 0,
+                 y: float = 0,
+                 color: str = DEFAULT_BG_COLOR,
+                 pin_width: float = DEFAULT_PIN_WIDTH) -> None:
+        self.pin_width = pin_width
+        self.designator = designator
+        self.net = net
+        self.x = x
+        self.y = y
+        self.color = color
+
+    @property
+    def width(self):
+        self._set_elements()
+        width = self.net.x + self.net.width()
+        if self.x < 0:
+            width = self.net.x - self.net.width()
+        return width
+
+    def _set_elements(self) -> None:
+        self.designator.x = self.x + self.pin_width / 2
+        self.designator.y = self.y + DEFAULT_PIN_HEIGHT / 2 + DEFAULT_FONT_SIZE / 3
+        self.designator.anchor = 'middle'
+        if not self._is_color_bright(self.color):
+            self.designator.color = '#ffffff'
+
+        self.net.x = self.x + DEFAULT_PIN_WIDTH * 1.25
+        if self.x < 0:
+            self.net.x = self.x - DEFAULT_PIN_WIDTH * 0.25
+            self.net.anchor = 'end'
+        self.net.y = self.designator.y
+
+    def svg_elements(self) -> list:
+        self._set_elements()
+        elements = [svg.Rectangle(x=round(self.x, 2),
+                                  y=round(self.y, 2),
+                                  width=self.pin_width,
+                                  height=DEFAULT_PIN_HEIGHT,
+                                  stroke='black',
+                                  fill=self.color)]
+        elements.extend(self.designator.svg_elements())
+        elements.extend(self.net.svg_elements())
+        return elements
 
     def _is_color_bright(self, color: str) -> bool:
         color = color.replace('#', '')
@@ -269,36 +104,144 @@ class PinoutDrawing:
         luminance = 1 - (0.299 * r + 0.587 * g + 0.114 * b) / 255
         return luminance < 0.5
 
+
+class PinPattern:
+    MATRIX = {'header': {'tb': [[], '1col'],
+                         'bt': [['reverse'], '1col'],
+                         'tb-lr': [[], '2col'],
+                         'tb-rl': [['flip_half'], '2col'],
+                         'bt-rl': [['reverse'], '2col'],
+                         'bt-lr': [['reverse', 'flip_half'], '2col'],
+                         'lr-tb': [['odd_even'], '2col'],
+                         'lr-bt': [['odd_even', 'flip_half', 'reverse'], '2col'],
+                         'rl-tb': [['odd_even', 'flip_half'], '2col'],
+                         'rl-bt': [['odd_even', 'reverse'], '2col']},
+              'dsub': {'tb-lr': [[], '1left'],
+                       'bt-rl': [['reverse'], '1right'],
+                       'bt-lr': [['reverse', 'flip_half'], '1left'],
+                       'tb-rl': [['flip_half', 'shift_left'], '1right']}}
+
+    def __init__(self,
+                 pin_count: int,
+                 type: str,
+                 mode: str,
+                 prefixes: list = None,
+                 shield_designator: str = None) -> None:
+        self._pins = []
+        self._generate(pin_count, type, mode, prefixes, shield_designator)
+
+    def to_dict(self) -> dict:
+        output = {}
+        for pin in self._pins:
+            output.update({pin.designator.text: pin})
+        return output
+
+    def designators(self) -> list:
+        return list(self.to_dict().keys())
+
+    def _generate(self, pin_count: int, type: str, mode: str, prefixes: list, shld: str) -> list:
+        self._generate_designators(pin_count, prefixes)
+        if type in self.MATRIX:
+            modes = self.MATRIX[type]
+            if mode in modes:
+                for transform in modes[mode][0]:
+                    if transform == 'reverse':
+                        self._pins = self._pins[::-1]
+                    elif transform == 'flip_half':
+                        half = round(len(self._pins)/2)
+                        self._pins = self._pins[half::] + self._pins[:half:]
+                    elif transform == 'odd_even':
+                        self._pins = self._pins[::2] + self._pins[1::2]
+                    elif transform == 'shift_left':
+                        self._pins = self._pins + [self._pins.pop(0)]
+                    else:
+                        raise ValueError('Unknown pin pattern transformation:', transform)
+                if modes[mode][1] == '1col':
+                    self._generate_1col(pin_count)
+                elif modes[mode][1] == '2col':
+                    self._generate_2col(pin_count, shld)
+            else:
+                raise ValueError('Unknown pin pattern mode:', mode)
+        else:
+            raise ValueError('Unknown pin pattern type:', type)
+
+    def _generate_designators(self, pin_count: int, prefixes: list) -> list:
+        self._pins = []
+        if prefixes:
+            for prefix in prefixes:
+                for number in range(1, round(pin_count/len(prefixes)) + 1 , 1):
+                    self._pins.append(Pin(designator=PinText(prefix+str(number)),
+                                          net=PinText()))
+        else:
+            for number in range(1, pin_count + 1 , 1):
+                self._pins.append(Pin(designator=PinText(str(number)),
+                                      net=PinText()))
+
+    def _generate_1col(self, pin_count: int):
+        for i in range(0, pin_count, 1):
+            self._pins[i].y = i * DEFAULT_PIN_HEIGHT
+
+    def _generate_2col(self, pin_count: int, shld: str):
+        x = -1 * DEFAULT_PIN_WIDTH
+        y = 0
+        half = False
+        for i in range(0, pin_count, 1):
+            self._pins[i].x = x
+            self._pins[i].y = y
+            y += DEFAULT_PIN_HEIGHT
+            if not half and i + 1 >= pin_count / 2:
+                y = 0
+                x = 0
+                half = True
+        if shld != None and len(shld):
+            self._pins.append(Pin(designator=PinText(shld),
+                                  net=PinText(),
+                                  x = - DEFAULT_PIN_WIDTH,
+                                  y = y,
+                                  pin_width=DEFAULT_PIN_WIDTH*2))
+
+
+class PinoutDrawing:
+    def __init__(self,
+                 pin_count,
+                 type,
+                 mode,
+                 colors: dict = DEFAULT_COLORS,
+                 prefixes: list = None,
+                 shield_designator: str = None) -> None:
+        self._colors = colors
+        self.drawing = svg.Drawing(DEFAULT_PIN_WIDTH, DEFAULT_PIN_HEIGHT)
+        self.pins = PinPattern(pin_count, type, mode, prefixes, shield_designator).to_dict()
+
     def update_color(self, pin: str, color: str) -> None:
-        if pin in self.pinmap._items:
-            params = self.pinmap._items[pin]
-            params.color = color
-            self.pinmap._items.update({pin: params})
+        if pin in self.pins:
+            value = self.pins[pin]
+            value.color = color
+            self.pins.update({pin: value})
 
     def update_net(self, pin: str, net: str) -> None:
-        if pin in self.pinmap._items:
-            params = self.pinmap._items[pin]
-            params.net = net
-            self.pinmap._items.update({pin: params})
+        if pin in self.pins:
+            value = self.pins[pin]
+            value.net.text = net
+            for color, nets in self._colors.items():
+                for _net in nets:
+                    if _net in net.lower().replace('\\', ''):
+                        value.color = color
+            self.pins.update({pin: value})
 
-    def _draw_pins(self) -> None:
-        for name, params in self.pinmap.to_dict().items():
-            for color_nets in self._colors:
-                color = list(color_nets.keys())[0]
-                nets = color_nets[color]
-                for net in nets:
-                    if net.lower() in params.net.lower().replace('\\', ''):
-                        params.color = color
-            self.draw_pin(params.x, params.y, params.color, name, params.net, params.net_anchor)
+    def _update_drawing_area(self, minus_x: float, plus_x: float, y: float):
+        self.drawing.width = abs(minus_x) + abs(plus_x) + 2
+        self.drawing.height = y + 2
+        self.drawing.view_box = (minus_x - 1, -1, self.drawing.width, self.drawing.height)
 
     def to_svg(self, path) -> None:
-        self._draw_pins()
-        self._drawing.save_svg(path)
-
-    # An old version of fitting of the drawing area withing generated SVG
-    # def _autofit_drawing(self, path) -> None:
-    #    command = 'inkscape --export-type="svg" --export-area-drawing -o ' + path + ' ' + path
-    #    if os.name == 'nt':
-    #        os.popen(command + ' 2> nul')
-    #    else:
-    #        os.popen(command + ' 2> /dev/null')
+        plus_x = 0
+        minus_x = 0
+        y = 0
+        for pin in self.pins.values():
+            minus_x, plus_x = (min([minus_x, pin.width]), max([plus_x, pin.width]))
+            y = max([y, pin.y])
+            for element in pin.svg_elements():
+                self.drawing.append(element)
+        self._update_drawing_area(minus_x, plus_x, y + DEFAULT_PIN_HEIGHT)
+        self.drawing.save_svg(path)
