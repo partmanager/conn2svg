@@ -105,57 +105,57 @@ class TestPinPattern(unittest.TestCase):
         self.assertEqual(self._template_test_pin_xy(9, 'dsub', 'bt-rl'), dsub_1right)
         self.assertEqual(self._template_test_pin_xy(9, 'dsub', 'tb-rl'), dsub_1right)
 
-    def _test_svg_drawing_elements(self):
+    def test_svg_drawing_elements(self):
         colors = {'#ff0000': ['3.3'],
                   '#00ff00': ['can'],
                   '#0000ff': ['gnd']}
         drawing = PinoutDrawing(4, 'header', 'tb', colors)
         drawing.update_net('1', 'GND')
-        drawing.update_net('2', 'CAN_N')
-        drawing.update_net('3', 'CAN_P')
+        drawing.update_net('2', 'CAN_H')
+        drawing.update_net('3', 'CAN_L')
         drawing.update_net('4', '+3.3V')
 
         elements = drawing.svg_drawing().elements
 
         self.assertEqual(str(type(elements[0])), "<class 'drawsvg.elements.Rectangle'>")
         self.assertEqual(elements[0].args,
-                         {'fill': '#0000ff','height': 20, 'stroke': 'black', 'width': 20, 'x': 0, 'y': 0})
+                         {'fill': '#0000ff','height': 20, 'stroke': 'black', 'width': 20, 'x': -20, 'y': 0})
         self.assertEqual(str(type(elements[1])), "<class 'drawsvg.elements.Text'>")
         self.assertEqual(elements[1].args,
-                         {'fill': '#ffffff','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'middle', 'x': 10.0, 'y': 13.33})
+                         {'fill': '#ffffff','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'middle', 'x': -10.0, 'y': 13.33})
         self.assertEqual(str(type(elements[2])), "<class 'drawsvg.elements.Text'>")
         self.assertEqual(elements[2].args,
-                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'start', 'x': 25.0, 'y': 13.33})
+                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'end', 'x': -25.0, 'y': 13.33})
 
         self.assertEqual(str(type(elements[3])), "<class 'drawsvg.elements.Rectangle'>")
         self.assertEqual(elements[3].args,
-                         {'fill': '#00ff00','height': 20, 'stroke': 'black', 'width': 20, 'x': 0, 'y': 20})
+                         {'fill': '#00ff00','height': 20, 'stroke': 'black', 'width': 20, 'x': -20, 'y': 20})
         self.assertEqual(str(type(elements[4])), "<class 'drawsvg.elements.Text'>")
         self.assertEqual(elements[4].args,
-                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'middle', 'x': 10.0, 'y': 33.33})
+                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'middle', 'x': -10.0, 'y': 33.33})
         self.assertEqual(str(type(elements[5])), "<class 'drawsvg.elements.Text'>")
         self.assertEqual(elements[5].args,
-                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'start', 'x': 25.0, 'y': 33.33})
+                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'end', 'x': -25.0, 'y': 33.33})
 
         self.assertEqual(str(type(elements[6])), "<class 'drawsvg.elements.Rectangle'>")
         self.assertEqual(elements[6].args,
-                         {'fill': '#00ff00','height': 20, 'stroke': 'black', 'width': 20, 'x': 0, 'y': 40})
+                         {'fill': '#00ff00','height': 20, 'stroke': 'black', 'width': 20, 'x': -20, 'y': 40})
         self.assertEqual(str(type(elements[7])), "<class 'drawsvg.elements.Text'>")
         self.assertEqual(elements[7].args,
-                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'middle', 'x': 10.0, 'y': 53.33})
+                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'middle', 'x': -10.0, 'y': 53.33})
         self.assertEqual(str(type(elements[8])), "<class 'drawsvg.elements.Text'>")
         self.assertEqual(elements[8].args,
-                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'start', 'x': 25.0, 'y': 53.33})
+                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'end', 'x': -25.0, 'y': 53.33})
 
         self.assertEqual(str(type(elements[9])), "<class 'drawsvg.elements.Rectangle'>")
         self.assertEqual(elements[9].args,
-                         {'fill': '#ff0000','height': 20, 'stroke': 'black', 'width': 20, 'x': 0, 'y': 60})
+                         {'fill': '#ff0000','height': 20, 'stroke': 'black', 'width': 20, 'x': -20, 'y': 60})
         self.assertEqual(str(type(elements[10])), "<class 'drawsvg.elements.Text'>")
         self.assertEqual(elements[10].args,
-                         {'fill': '#ffffff','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'middle', 'x': 10.0, 'y': 73.33})
+                         {'fill': '#ffffff','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'middle', 'x': -10.0, 'y': 73.33})
         self.assertEqual(str(type(elements[11])), "<class 'drawsvg.elements.Text'>")
         self.assertEqual(elements[11].args,
-                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'start', 'x': 25.0, 'y': 73.33})
+                         {'fill': '#000000','font-family': 'Arial', 'font-size': '10.0px', 'text-anchor': 'end', 'x': -25.0, 'y': 73.33})
 
     def _template_save_svg(self, pin_count, type, mode):
         drawing = PinoutDrawing(pin_count, type, mode)
@@ -202,6 +202,42 @@ class TestPinPattern(unittest.TestCase):
         drawing.update_net('shld', 'netSHLD')
         drawing.update_color('shld', '#0000cc')
         drawing.to_svg('dsub_15pin_tb-rl_shield.svg')
+    
+    def test_add_drawings(self):
+        colors = {'#ff0000': ['3.3'],
+                  '#00ff00': ['I2C'],
+                  '#0000ff': ['gnd']}
+        drawing_1 = PinoutDrawing(6, 'header', 'tb-lr', colors, ['A'])
+        drawing_1.update_net('A1', '+3.3V')
+        drawing_1.update_net('A2', 'I2C_SCL')
+        drawing_1.update_net('A3', 'I2C_SDA')
+        drawing_1.update_net('A4', 'GND')
+        drawing_1.update_net('A5', 'TRIG2')
+        drawing_1.update_net('A6', 'GND')
+
+        drawing = PinoutDrawing(colors={})
+        drawing += drawing_1
+
+        colors = {'#ff3333': ['3.3'],
+                  '#ffff33': ['can', 'trig'],
+                  '#0000ff': ['gnd'],}
+        drawing_2 = PinoutDrawing(6, 'header', 'tb-lr', colors, ['B'])
+        drawing_2.update_net('B1', '+5V')
+        drawing_2.update_net('B2', 'CAN_H')
+        drawing_2.update_net('B3', 'CAN_L')
+        drawing_2.update_net('B4', 'TRIG1')
+        drawing_2.update_net('B5', 'TRIG2')
+        drawing_2.update_net('B6', 'GND')
+        drawing += drawing_2
+
+        self.assertEqual(drawing._colors,
+                         {'#ff0000': ['3.3'],
+                          '#00ff00': ['I2C'],
+                          '#0000ff': ['gnd'],
+                          '#ff3333': ['3.3'],
+                          '#ffff33': ['can', 'trig'],})
+        
+        drawing.to_svg('add.svg')
 
 
 if __name__ == '__main__':

@@ -66,28 +66,16 @@ class Pin:
         self.color = color
 
     @property
-    def width(self):
-        self._set_elements()
-        width = self.net.x + self.net.width()
-        if self.x < 0:
-            width = self.net.x - self.net.width()
-        return width
-
-    def _set_elements(self) -> None:
-        self.designator.x = self.x + self.pin_width / 2
-        self.designator.y = self.y + DEFAULT_PIN_HEIGHT / 2 + DEFAULT_FONT_SIZE / 3
-        self.designator.anchor = 'middle'
-        if not self._is_color_bright(self.color):
-            self.designator.color = '#ffffff'
-
-        self.net.x = self.x + DEFAULT_PIN_WIDTH * 1.25
-        if self.x < 0:
-            self.net.x = self.x - DEFAULT_PIN_WIDTH * 0.25
-            self.net.anchor = 'end'
-        self.net.y = self.designator.y
+    def minx_width(self):
+        width = self.net.width() + 1.25 * DEFAULT_PIN_WIDTH
+        min_x = self.net.x - 1.25 * DEFAULT_PIN_WIDTH
+        if self.net.anchor == 'end':
+            min_x = self.net.x - self.net.width()
+        return (min_x, width)
 
     def svg_elements(self) -> list:
-        self._set_elements()
+        if not self._is_color_bright(self.color):
+            self.designator.color = '#ffffff'
         elements = [svg.Rectangle(x=round(self.x, 2),
                                   y=round(self.y, 2),
                                   width=self.pin_width,
@@ -181,12 +169,22 @@ class PinPattern:
     def _generate_header_dsub(self, pin_count: int, type: str, mode: str, shld: str) -> None:
         x = -DEFAULT_PIN_WIDTH
         y = 0
+        anchor = 'end'
         if type == 'dsub' and '-rl' in mode:
             y = DEFAULT_PIN_HEIGHT / 2
         half = False
         for i in range(0, pin_count, 1):
             self._pins[i].x = x
             self._pins[i].y = y
+            self._pins[i].net.y = y + 2 * DEFAULT_PIN_HEIGHT / 3
+            self._pins[i].net.x = x + DEFAULT_PIN_WIDTH * 1.25
+            if anchor == 'end':
+                self._pins[i].net.x = x - DEFAULT_PIN_WIDTH * 0.25
+                self._pins[i].net.anchor = 'end'
+            self._pins[i].designator.x = x + DEFAULT_PIN_WIDTH / 2
+            self._pins[i].designator.y = y + DEFAULT_PIN_HEIGHT / 2 + DEFAULT_FONT_SIZE / 3
+            self._pins[i].designator.anchor = 'middle'
+
             y += DEFAULT_PIN_HEIGHT
             if mode != 'tb' and mode != 'bt':
                 i_offset = 1
@@ -199,10 +197,17 @@ class PinPattern:
                 if not half and i + i_offset >= pin_count / 2:
                     y = y_offset
                     x = 0
+                    anchor = 'start'
                     half = True
         if shld != None and len(shld):
-            self._pins.append(Pin(designator=PinText(shld),
-                                    net=PinText(),
+            text_y = y + DEFAULT_PIN_HEIGHT / 2 + DEFAULT_FONT_SIZE / 3
+            self._pins.append(Pin(designator=PinText(shld,
+                                                     x = 0,
+                                                     y = text_y,
+                                                     anchor = 'middle'),
+                                    net=PinText('',
+                                                x = 1.25 * DEFAULT_PIN_WIDTH,
+                                                y = text_y),
                                     x = -DEFAULT_PIN_WIDTH,
                                     y = y,
                                     pin_width=DEFAULT_PIN_WIDTH*2))
@@ -210,14 +215,16 @@ class PinPattern:
 
 class PinoutDrawing:
     def __init__(self,
-                 pin_count,
-                 type,
-                 mode,
+                 pin_count: int = None,
+                 type: str = None,
+                 mode: str = None,
                  colors: dict = DEFAULT_COLORS,
                  prefixes: list = None,
                  shield_designator: str = None) -> None:
         self._colors = colors
-        self.pins = PinPattern(pin_count, type, mode, prefixes, shield_designator).to_dict()
+        self.pins = {}
+        if pin_count != None and type != None and mode != None:
+            self.pins = PinPattern(pin_count, type, mode, prefixes, shield_designator).to_dict()
 
     def update_color(self, pin: str, color: str) -> None:
         if pin in self.pins:
@@ -231,7 +238,7 @@ class PinoutDrawing:
             value.net.text = net
             for color, nets in self._colors.items():
                 for _net in nets:
-                    if _net in net.lower().replace('\\', ''):
+                    if _net.lower() in net.lower().replace('\\', ''):
                         value.color = color
             self.pins.update({pin: value})
 
@@ -241,14 +248,33 @@ class PinoutDrawing:
         minus_x = 0
         y = 0
         for pin in self.pins.values():
-            minus_x, plus_x = (min([minus_x, pin.width]), max([plus_x, pin.width]))
+            minus_x = min([minus_x, pin.minx_width[0]])
+            plus_x = max([plus_x, pin.minx_width[0] + pin.minx_width[1]])
             y = max([y, pin.y])
             for element in pin.svg_elements():
                 drawing.append(element)
-        drawing.width = abs(minus_x) + abs(plus_x) + 2
+        drawing.width = abs(minus_x) + abs(plus_x) + DEFAULT_FONT_SIZE / 2
         drawing.height = y + DEFAULT_PIN_HEIGHT + 2
         drawing.view_box = (minus_x - 1, -1, drawing.width, drawing.height)
         return drawing
 
     def to_svg(self, path) -> None:
         self.svg_drawing().save_svg(path)
+
+    def __add__(self, other):
+        output = self
+
+        if self._colors != other._colors:
+            for color, nets in other._colors.items():
+                if color in self._colors:
+                    nets = list(dict.fromkeys(self._colors[color] + other._colors[color]))
+                output._colors.update({color: nets})
+
+        width = self.svg_drawing().width - other.svg_drawing().view_box[0]
+        for designator, pin in other.pins.items():
+            pin.x += width
+            pin.designator.x += width
+            pin.net.x += width
+            output.pins.update({designator: pin})
+
+        return output
