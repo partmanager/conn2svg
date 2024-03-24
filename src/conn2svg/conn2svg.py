@@ -220,8 +220,10 @@ class PinoutDrawing:
                  mode: str = None,
                  colors: dict = DEFAULT_COLORS,
                  prefixes: list = None,
-                 shield_designator: str = None) -> None:
+                 shield_designator: str = None,
+                 overwritten: dict = None) -> None:
         self._colors = colors
+        self._overwritten = overwritten
         self.pins = {}
         if pin_count != None and type != None and mode != None:
             self.pins = PinPattern(pin_count, type, mode, prefixes, shield_designator).to_dict()
@@ -242,7 +244,13 @@ class PinoutDrawing:
                         value.color = color
             self.pins.update({pin: value})
 
+    def override_pins(self, overwritten: dict) -> None:
+        if overwritten != None and len(overwritten):
+            for pin, new_net in self._overwritten.items():
+                self.update_net(pin, new_net)
+
     def svg_drawing(self):
+        self.override_pins(self._overwritten)
         drawing = svg.Drawing(DEFAULT_PIN_WIDTH, DEFAULT_PIN_HEIGHT)
         plus_x = 0
         minus_x = 0
