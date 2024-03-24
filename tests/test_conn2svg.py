@@ -215,7 +215,7 @@ class TestPinPattern(unittest.TestCase):
         drawing_1.update_net('A5', 'TRIG2')
         drawing_1.update_net('A6', 'GND')
 
-        drawing = PinoutDrawing(colors={})
+        drawing = PinoutDrawing()
         drawing += drawing_1
 
         colors = {'#ff3333': ['3.3'],

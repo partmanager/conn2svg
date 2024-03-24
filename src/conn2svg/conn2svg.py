@@ -1,7 +1,6 @@
 import drawsvg as svg
 from ._tooling import FontTooling
 
-DEFAULT_COLORS = {'#2f75b5': ['gnd']}
 DEFAULT_BG_COLOR = '#eeeeee'
 DEFAULT_PIN_WIDTH = 20
 DEFAULT_PIN_HEIGHT = 20
@@ -218,15 +217,24 @@ class PinoutDrawing:
                  pin_count: int = None,
                  type: str = None,
                  mode: str = None,
-                 colors: dict = DEFAULT_COLORS,
+                 colors: dict = None,
                  prefixes: list = None,
+                 pin_net_pairs: dict = None,
                  shield_designator: str = None,
                  overwritten: dict = None) -> None:
-        self._colors = colors
+        self._colors = {}
+        if colors != None:
+            self._colors = colors
         self._overwritten = overwritten
         self.pins = {}
         if pin_count != None and type != None and mode != None:
             self.pins = PinPattern(pin_count, type, mode, prefixes, shield_designator).to_dict()
+            if pin_net_pairs != None:
+                self.update_nets(pin_net_pairs)
+
+    def update_nets(self, pin_net_pairs: dict) -> None:
+        for pin, net in pin_net_pairs.items():
+            self.update_net(pin, net)
 
     def update_color(self, pin: str, color: str) -> None:
         if pin in self.pins:
