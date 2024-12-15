@@ -1,2 +1,2 @@
 drawsvg==2.3.0
-netbom==0.0.10
+netbom==0.0.18
